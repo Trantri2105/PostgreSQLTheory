@@ -1,20 +1,44 @@
 # PostgreSQL Theory
 
+## Mục lục
+- [Overview](#overview)
+- [Các thành phần chính trong PostgreSQL](#các-thành-phần-chính-trong-postgresql)
+    - [I. Cluster](#i-cluster)
+    - [II. Database](#ii-database)
+    - [III. Schema](#iii-schema)
+    - [IV. Table](#iv-table)
+      - [1. Overview](#1-overview)
+      - [2. Default value](#2-default-value)
+      - [3. Generated column](#3-generated-column)
+      - [4. Constraint](#4-constraint)
+      - [5. Thay đổi cấu trúc của một bảng](#5-thay-đổi-cấu-trúc-của-một-bảng)
+- [Data Manipulation Language (DML)](#data-manipulation-language-dml)
+  - [1. Insert](#1-insert)
+  - [2. Update](#2-update)
+  - [3. Delete](#3-delete)
+- [Queries (Truy vấn)](#queries-truy-vấn)
+  - [1. Overview](#1-overview-1)
+  - [2. SELECT](#2-select)
+  - [3. FROM và JOIN](#3-from-và-join)
+  - [4. WHERE](#4-where)
+  - [5. GROUP BY và HAVING](#5-group-by-và-having)
+  - [6. Aggregate Function](#6-aggregate-function)
+  - [7. ORDER BY](#7-order-by)
+  - [8. Thứ tự thực thi tổng quát của một truy vấn](#8-thứ-tự-thực-thi-tổng-quát-của-một-truy-vấn)
+
 ## Overview
 
-## Chi tiết về PostgreSQL
-
-### Các thành phần chính trong PostgreSQL
+## Các thành phần chính trong PostgreSQL
 
 - PostgreSQL tổ chức dữ liệu theo một cấu trúc phân cấp rõ ràng, bao gồm cluster, database, schema, table,...
 
     ![](./image.png)
 
-**I. Cluster**
+### I. Cluster
 
 - Cluster là đơn vị lưu trữ lớn nhất trong PostgreSQL, là một tập hợp các cơ sở dữ liệu được quản lý bởi một server PostgreSQL.
 
-**II. Database**
+### II. Database
 
 - Database là một tập hợp các schema, mỗi schema chứa các table và các đối tượng khác.
 - Mỗi database trong PostgreSQL là một thực thể độc lập với các schema và table riêng.
@@ -41,7 +65,7 @@
     - Xóa 1 database cũng sẽ xóa sạch tất cả các đối tượng chứa trong database đó.
     - Không thể thực thi câu lệnh `DROP DATABASE` khi ta đang kết nối đến database cần xóa. Cần phải kết nối đến một database khác rồi mới tiến hành thực thi câu lệnh xóa database kia.
 
-**III. Schema**
+### III. Schema
 
 - Schema là một không gian chứa các đối tượng trong cơ sở dữ liệu như table, view, index,...
 - Schema giúp tổ chức, quản lý và nhóm các đối tượng trong database theo logic.
@@ -76,9 +100,9 @@
     SET search_path TO schema1, schema2, public;
     ```
 
-**IV. Table**
+### IV. Table
 
-**1. Overview**
+#### 1. Overview
 
 - Table là đối tượng lưu trữ dữ liệu trong PostgreSQL, mỗi table sẽ có một cấu trúc xác định với các cột và kiểu dữ liệu.
 
@@ -106,7 +130,7 @@
     DROP TABLE ten_bang
     ```
 
-**2. Default value**
+#### 2. Default value
 
 - Một cột (column) trong PostgreSQL có thể được gán một giá trị mặc định (default value). Khi một record được tạo và không có giá trị nào được chỉ định cho cột đó, cột đó sẽ được gán cho giá trị mặc định tương ứng. Nếu không có giá trị mặc định nào được khai báo, giá trị mặc định của cột đó sẽ là `null`.
         ```sql
@@ -118,7 +142,7 @@
         ```
 - Giá trị mặc định có thể là một biểu thức (expression), biểu thức này sẽ được thực thi bất cứ khi nào giá trị mặc định được tạo. Ví dụ, ta có thể đặt giá trị mặc định của một cột có kiểu `timestamp` là `CURRENT_TIMESTAMP` và mỗi khi một `record` mới được tạo, cột này sẽ có giá trị mặc định bằng với thời gian mà `record` được tạo ra.
 
-**3. Generated column** 
+#### 3. Generated column
 - `Generated column` là một cột đặt biệt mà giá trị của cột này luôn được tính toán dựa trên giá trị của các cột khác. Không thể chèn hoặc thay đổi giá trị của `generated column` sử dụng câu lệnh `INSERT` hoặc `UPDATE`.
 - Có hai kiểu `generated column`
     - `Stored`: Giá trị của cột được tính toán khi dữ liệu được chèn (`insert`) hoặc cập nhật (`update`), và được lưu trữ trực tiếp trong bảng.
@@ -137,7 +161,7 @@
             height_in numeric GENERATED ALWAYS AS (height_cm / 2.54)
         );
         ```
-**4. Constraint**
+#### 4. Constraint
 - Table có thể có các ràng buộc (`constraint`) như khóa chính, khóa ngoại, và các ràng buộc khác trên một cột (`column constraint`) hay nhiều cột (`table constraint`).
 - `Check Constraints` (ràng buộc kiểm tra)
     - Là loại ràng buộc cho phép chúng ta chỉ định giá trị của một cột phải thỏa mãn một yêu cầu hoặc điều kiện cụ thể, nói cách khác, giá trị đó phải thoả mãn một biểu thức boolean.
@@ -266,7 +290,7 @@
         );
         ```
 
-**5. Thay đổi cấu trúc của một bảng**
+#### 5. Thay đổi cấu trúc của một bảng
 - Thêm một cột (column) vào bảng
     ```sql
     ALTER TABLE products ADD COLUMN description text;
@@ -345,8 +369,8 @@
     ALTER TABLE ten_bang_cu RENAME TO ten_bang_moi;
     ```
 
-### Data Manipulation Language (DML)
-**1. Insert**
+## Data Manipulation Language (DML)
+### 1. Insert
 - Để tạo một `record` mới trong bảng, ta sử dụng câu lệnh `INSERT`.
 - Cú pháp cơ bản
     ```sql
@@ -378,7 +402,7 @@
     ```
 - Ta có thể thêm `RETURNING cot1, cot2, ...` hay `RETURING *` vào cuối câu lệnh `INSERT` để xem các `record` được thêm vào bởi câu lệnh này.
 
-**2. Update**
+### 2. Update
 - Ta có thể cập nhật dữ liệu của một cột hay một nhóm cột trong một `record` hay một tập các `record` trong một bảng.
 - Cú pháp
     ```sql
@@ -394,7 +418,7 @@
 - Nếu bỏ `WHERE` thì mọi `record` trong bảng sẽ được cập nhật.
 - Ta có thể thêm `RETURNING cot1, cot2, ...` vào cuối câu lệnh để xem các `record` đã được cập nhật.
 
-**3. Delete**
+### 3. Delete
 - Ta có thể xóa một `record` hay nhiều `record` sử dụng câu lệnh `DELETE`.
 - Cú pháp
     ```sql
@@ -407,9 +431,9 @@
 - Nếu ta bỏ `WHERE` thì mọi `record` trong bảng sẽ bị xóa.
 - Ta có thể thêm `RETURNING` để xem các `record` bị xóa.
 
-### Queries (Truy vấn)
+## Queries (Truy vấn)
 
-**1. Overview**
+### 1. Overview
 - Cấu trúc của một truy vấn đọc dữ liệu trong PostgreSQL
     ```sql
     SELECT [ ALL | DISTINCT] column1, column2, ...
@@ -429,7 +453,7 @@
     LIMIT 100;
     ```
 
-**2. SELECT**
+### 2. SELECT
 - Chỉ định các cột dữ liệu cần trả về, các cột này có thể là tên của các cột cần lấy dữ liệu từ các bảng trong `FROM` hoặc là một biểu thức để biến đổi dữ liệu lấy ra thành các dữ liệu mới.
 - Ta có thể gán tên mới cho các cột hoặc biểu thức sử dụng `AS`. Tên mới này sẽ được sử dụng để ghi đè tên cột trong kết quả trả về và có thể sử dụng trong `GROUP BY` và `ORDER BY`. 
     ```sql
@@ -445,14 +469,14 @@
     ```
 - Ta có thể dùng `SELECT DISTINCT` để loại bỏ các hàng giống nhau trong kết quả trả về.
 
-**3. FROM và JOIN**
+### 3. FROM và JOIN
 - Mệnh đề `FROM` sẽ xác định các nguồn dữ liệu để truy vấn thông tin.
 - Các đối tượng trong `FROM` có thể là tên của một `table`, kết quả của một truy vấn con (`subquery`), một cấu trúc `JOIN` hoặc một sự kết hợp phức tạp của các yếu tố này. Kết quả của tập hợp trong `FROM` sẽ là một bảng ảo có thể được sử dụng và biến đổi bởi `WHERE`, `GROUP BY` và `HAVING` để tạo ra kết quả của một truy vấn.
 - Ta có thể dùng `AS` để tạm thời đặt tên mới cho bảng trong `FROM`, ta không thể sử dụng tên gốc để tham chiếu đến bảng này trong truy vấn này nữa.
     ```sql
     SELECT * FROM my_table AS m WHERE my_table.a > 5;    -- wrong
     ```
-- `JOIN`:
+- Các phép `JOIN`:
     - Syntax chung
         ```sql
         t1 join_type t2 [ join_condition ]
@@ -603,7 +627,7 @@
              |      |   5 | zzz
         ```
 
-**4. WHERE**
+### 4. WHERE
 - Syntax
     ```sql
     WHERE search_condition
@@ -611,15 +635,128 @@
 - Điều kiện tìm kiếm có thể là bất kỳ biểu thức nào trả về một giá trị `boolean`.
 - PostgreSQL sẽ sử dụng điều kiện tìm kiếm này để lọc dữ liệu từ `FROM`.
 
-**5. GROUP BY và HAVING**
-- Lorem ipsum
+### 5. GROUP BY và HAVING
+- `GROUP BY` được sử dụng để nhóm các hàng có cùng giá trị trong các cột được chỉ định. Điều này cho phép ta sử dụng các hàm tổng hợp `aggregate function` cho mỗi nhóm thay vì toàn bộ bảng.
+- Khi sử dụng `GROUP BY`, mỗi cột trong `SELECT` phải là một cột xuất hiện trong mệnh đề `GROUP BY` hoặc là một biểu thức tính toán hay tổng hợp kết quả.
+    ```sql
+    SELECT * FROM test1;
+     x | y
+    ---+---
+     a | 3
+     c | 2
+     b | 5
+     a | 1
 
-**6. Thứ tự thực thi tổng quát của một truy vấn**
+    -- Nhóm theo giá trị x và tính tổng giá trị y cho mỗi nhóm
+    SELECT x, sum(y) FROM test1 GROUP BY x;
+     x | sum
+    ---+-----
+     a |   4
+     b |   5
+     c |   2
+    ```
+- `HAVING` được sử dụng để lọc kết quả đã được nhóm bởi `GROUP BY`. Nó hoạt động tương tự như `WHERE` nhưng áp dụng cho các nhóm, không phải cho từng hàng riêng lẻ.
+    ```sql
+    SELECT * FROM test1;
+     x | y
+    ---+---
+     a | 3
+     c | 2
+     b | 5
+     a | 1
+
+    -- Lọc ra các nhóm có tổng y > 3.
+    SELECT x, sum(y) FROM test1 GROUP BY x HAVING sum(y) > 3;
+     x | sum
+    ---+-----
+     a |   4
+     b |   5
+    ```
+
+### 6. Aggregate Function
+
+- Hàm tổng hợp `aggregate function` là các hàm đặc biệt trong PostgreSQL dùng để thực hiện các phép tính trên nhiều hàng dữ liệu và trả về một kết quả duy nhất.
+- Hàm tổng hợp có thể sử dụng để tính toán, tổng hợp kết quả từ nhiều `record` hoặc sử dụng kết hợp với `GROUP BY` để tổng hợp dữ liệu theo từng nhóm riêng biệt và có thể sử dụng trong `HAVING` để sàng lọc các nhóm trong `GROUP BY`.
+- Hàm tổng hợp không thể sử dụng trong `WHERE` vì `WHERE` sẽ được thực thi và lọc dữ liệu trước khi `GROUP BY` và các hàm tổng hợp được thực thi còn `HAVING` sử dụng được các hàm này vì nó sẽ lọc các nhóm sau khi PostgreSQL xử lý xong `GROUP BY` và tính toán các hàm tổng hợp.
+- Một số hàm tổng hợp phổ biến
+    - `COUNT()`: Đếm số lượng hàng hoặc giá trị không `null` trong cột.
+        ```sql
+        -- Đếm số lượng hàng trong bảng
+        SELECT COUNT(*) FROM users;
+
+        -- Đếm số lượng giá trị không null trong cột email
+        SELECT COUNT(email) FROM users;
+
+        -- Đếm số lượng giá trị duy nhất
+        SELECT COUNT(DISTINCT city) FROM users;
+        ```
+    - `AVG()`: Tính trung bình của các giá trị trong một cột.
+        ```sql
+        -- Tính lương trung bình theo từng phòng ban
+        SELECT department_id, AVG(salary) AS average_salary 
+        FROM employees 
+        GROUP BY department_id;
+        ```
+    - `MIN() và  MAX()`: Tìm giá trị nhỏ nhất và lớn nhất trong một cột.
+        ```sql
+        -- Tìm lương thấp nhất và cao nhất theo từng phòng ban
+        SELECT department_id, MIN(salary) AS min_salary, MAX(salary) AS max_salary 
+        FROM employees 
+        GROUP BY department_id;
+        ```
+- Ta có thể đọc thêm các hàm tổng hợp được PostgreSQL hỗ trợ tại [đây](https://www.postgresql.org/docs/current/functions-aggregate.html#FUNCTIONS-ORDEREDSET-TABLE).
+
+### 7. ORDER BY
+
+- `ORDER BY` được sử dụng để sắp xếp kết quả của truy vấn theo một hoặc nhiều cột hay theo kết quả của một biểu thức. Nếu không sử dụng, kết quả của truy vấn sẽ được trả về theo thứ tự bất kỳ.
+- Syntax
+    ```sql
+    SELECT select_list
+    FROM table_expression
+    ORDER BY sort_expression1 [ASC | DESC] [NULLS { FIRST | LAST }]
+             [, sort_expression2 [ASC | DESC] [NULLS { FIRST | LAST }] ...]
+    ```
+- PostgreSQL sắp xếp kết quả dựa trên các biểu thức sắp xếp (sort expression) được chỉ định. Mặc định, dữ liệu được sắp xếp theo thứ tự tăng dần (ASC). Ta có thể sử dụng nhiều tiêu chí sắp xếp, PostgreSQL sẽ áp dụng theo thứ tự từ trái sang phải.
+    ```sql
+    -- Sắp xếp danh sách nhân viên theo lương tăng dần
+    SELECT employee_id, first_name, last_name, salary 
+    FROM employees 
+    ORDER BY salary;
+    ```
+- `NULL LAST` và `NULL FIRST` là 2 option có thể được sử dụng để đặt các hàng chứa giá trị `null` lên đầu hoặc cuối kết quả. Mặc định, giá trị `null` được coi như là lớn hơn bất kỳ một giá trị không `null` , vậy nên `NULL FIRST` là mặc định với `DESC` còn `NULL LAST` là mặc định với `ASC`.
+- Các lựa chọn như `NULL FIRST`, `ASC`,... là độc lập với mỗi biểu thức sắp xếp. Ví dụ với câu lệnh `ORDER BY x, y DESC` sẽ có nghĩa là `ORDER BY x ASC, y DESC` chứ không phải `ORDER BY x DESC, y DESC`.
+
+### 8. Thứ tự thực thi tổng quát của một truy vấn
 - `FROM`: Đầu tiên, PostgreSQL sẽ xác định tất cả các bảng cần đọc dữ liệu trong mệnh đề `FROM` và tiến hành thực hiện các phép `JOIN` nếu có.
 - `WHERE`: Sau khi đã có dữ liệu từ `FROM/JOIN`, PostgreSQL sẽ sử dụng các điều kiện có trong `WHERE` để tiến hành lọc dữ liệu, các hàng không thỏa mãn sẽ bị loại.
 - `GROUP BY`: Các dữ liệu được lọc ra từ `WHERE` sẽ được nhóm lại theo giá trị của các cột được chỉ định trong `GROUP BY`. Sau đó, các hàm tổng hợp (`aggregate function`) như `SUM`, `AVG`, `COUNT`,... sẽ được thực thi nếu có.
 - `HAVING`: Sau khi nhóm dữ liệu, PostgreSQL áp dụng các điều kiện trong mệnh đề `HAVING` để lọc và loại bỏ các nhóm không đáp ứng yêu cầu.
 - `SELECT`: Từ dữ liệu trên, PostgreSQL sẽ chọn ra các cột, thực thi và tính toán các biểu thức có trong mệnh đề `SELECT` để tạo ra các hàng trong output.
-- `DISTINC`: Nếu sử dụng từ khóa `DISTINC`, PostgreSQL sẽ loại bỏ các hàm trùng lặp từ kết quả.
-- `ORDER BY`: Nếu sử dụng `ORDER BY`, các hàng trả về sẽ được sắp xếp theo thứ tự chỉ định. Nếu không, các hàng sẽ được trả về theo bất kỳ thứ tự nào.
+- `DISTINC`: Tiếp theo, nếu sử dụng từ khóa `DISTINC`, PostgreSQL sẽ loại bỏ các hàm trùng lặp từ kết quả.
+- `ORDER BY`: Tiếp theo, nếu sử dụng `ORDER BY`, các hàng trả về sẽ được sắp xếp theo thứ tự chỉ định.
 - `LIMIT/OFFSET`: Cuối cùng, PostgreSQL sẽ giới hạn số lượng hàng trả về (`LIMIT`) và bỏ qua một số hàng từ vị trí đầu tiên (`OFFSET`) nếu có.
+
+### 9. Subquery
+- `Subquery` (truy vấn con) là một truy vấn được nhúng vào bên trong một truy vấn lớn hơn, cho phép ta sử dụng kết quả của một truy vấn khác bên trong truy vấn hiện tại.
+- Các loại `Subquery`
+    - `Scalar Subquery`: Là các truy vấn con trả về một giá trị duy nhất (kết quả trả về gồm một hàng và một cột), có thể được sử dụng ở bất kỳ vị trí nào đại diện cho một giá trị duy nhất.
+        ```sql
+        -- Trả về thông tin của nhân viên có mức lương cao hơn trung bình.
+        SELECT name, salary 
+        FROM employees
+        WHERE salary > (SELECT AVG(salary) FROM employees);
+
+        ```
+    - `Single Row Subquery`: Là các truy vấn con trả về một hàng với nhiều cột, nó cho phép so sánh nhiều giá trị cùng lúc.
+        ```sql
+        -- Trả về thông tin nhân viên có mức lương cao nhất trong phòng ban có id = 5
+        SELECT *
+        FROM employee
+        WHERE (department_id, salary) = (SELECT department_id, MAX(salary)
+                                        FROM employee
+                                        GROUP BY department_id
+                                        HAVING department_id = 5);
+        ```
+    - `Multiple Row Subquery`
+        - Là các truy vấn con trả về nhiều hàng.
+        - Nếu các hàng này chỉ có một cột, nó có thể sử dụng chung với các toán tử như `IN, ANY, ALL, SOME`.
