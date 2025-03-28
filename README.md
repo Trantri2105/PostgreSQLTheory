@@ -257,88 +257,88 @@
                 PRIMARY KEY (product_no, order_id)
             );
             ```
-    - Thay đổi cấu trúc của một `table`:
-        - Thêm một cột (column) vào bảng
+- Thay đổi cấu trúc của một `table`:
+    - Thêm một cột (column) vào bảng
+        ```sql
+        ALTER TABLE products ADD COLUMN description text;
+        ```
+    - Xóa một cột (column) trong bảng
+        ```sql
+        ALTER TABLE products DROP COLUMN description;
+        ```
+        - Khi xóa một cột thì PostgreSQL sẽ đồng thời xóa tất cả các `index` và `constraint` liên quan đến cột đó.
+    - Thêm ràng buộc (`constraint`)
+        - Thêm `Check Constraint`
             ```sql
-            ALTER TABLE products ADD COLUMN description text;
+            ALTER TABLE ten_bang ADD CHECK (dieu_kien);
+
+            ALTER TABLE ten_bang
+            ADD CONSTRAINT ten_rang_buoc CHECK (dieu_kien);
             ```
-        - Xóa một cột (column) trong bảng
-            ```sql
-            ALTER TABLE products DROP COLUMN description;
-            ```
-            - Khi xóa một cột thì PostgreSQL sẽ đồng thời xóa tất cả các `index` và `constraint` liên quan đến cột đó.
-        - Thêm ràng buộc (`constraint`)
-            - Thêm `Check Constraint`
-                ```sql
-                ALTER TABLE ten_bang ADD CHECK (dieu_kien);
-
-                ALTER TABLE ten_bang
-                ADD CONSTRAINT ten_rang_buoc CHECK (dieu_kien);
-                ```
-            - Thêm ràng buộc `UNIQUE`
-                ```sql
-                ALTER TABLE ten_bang
-                ADD CONSTRAINT ten_rang_buoc UNIQUE (ten_cot);
-                ```
-            - Thêm ràng buộc `NOT NULL`
-                ```sql
-                ALTER TABLE ten_bang 
-                ALTER COLUMN ten_cot SET NOT NULL;
-                ```
-            - Thêm khóa chính (`Primary Key`)
-                ```sql
-                ALTER TABLE ten_bang ADD PRIMARY KEY (ten_cot);
-
-                ALTER TABLE ten_bang
-                ADD CONSTRAINT ten_rang_buoc PRIMARY KEY (ten_cot);
-                ```
-            - Thêm khóa phụ (`Foreign Key`)
-                ```sql
-                ALTER TABLE ten_bang
-                ADD FOREIGN KEY (ten_cot) 
-                REFERENCES bang_tham_chieu (cot_tham_chieu) [ON DELETE action] [ON UPDATE action];
-
-                ALTER TABLE ten_bang
-                ADD CONSTRAINT ten_rang_buoc FOREIGN KEY (ten_cot) 
-                REFERENCES bang_tham_chieu (cot_tham_chieu) [ON DELETE action] [ON UPDATE action];
-                ```
-
-            - Khi thêm một ràng buộc trên một số cột thì các dữ liệu đã được lưu trong các cột đó phải thỏa mãn ràng buộc nếu không thì PostgreSQL sẽ báo lỗi. Ví dụ nếu ta thêm ràng buộc `NOT NULL` vào một cột thì tất cả dữ liệu đã được lưu trong cột đó không được có giá trị `null`.
-        - Xóa ràng buộc
-            - Để xóa một ràng buộc thì ta cần phải biết tên của chúng. Dùng câu lệnh `\d ten_bang` để xem thông tin chi tiết về bảng (bao gồm tên các ràng buộc có trong bảng đó).
-                ```sql
-                ALTER TABLE ten_bang DROP CONSTRAINT ten_rang_buoc;
-                ```
-            - Vì ràng buộc `NOT NULL` không thể đặt tên nên để xóa ràng buộc này, ta cần dùng
-                ```sql
-                ALTER TABLE ten_bang ALTER COLUMN ten_cot DROP NOT NULL;
-                ```
-        - Thay đổi giá trị mặc định của một cột
-            ```sql
-            -- Thay đổi giá trị mặc đinh
-            ALTER TABLE ten_bang ALTER COLUMN ten_cot SET DEFAULT gia_tri;
-
-            -- Xóa giá trị mặc định (đặt lại về null)
-            ALTER TABLE ten_bang ALTER COLUMN ten_cot DROP DEFAULT;
-            ```
-        - Thay đổi kiểu dữ liệu của một cột
-            ```sql
-            ALTER TABLE ten_bang ALTER COLUMN ten_cot TYPE kieu_du_lieu_moi;
-            ```
-            Câu lệnh này chỉ thực hiện thành công chỉ khi tất cả dữ liệu cũ có thể convert thành công sang kiểu dữ liệu mới. Ta có thể thêm `USING` vào để thêm biểu thức tính toán dữ liệu mới dựa trên dữ liệu cũ.
-        - Đổi tên một cột
+        - Thêm ràng buộc `UNIQUE`
             ```sql
             ALTER TABLE ten_bang
-            RENAME COLUMN ten_cot_cu TO ten_cot_moi;
+            ADD CONSTRAINT ten_rang_buoc UNIQUE (ten_cot);
             ```
-        - Đổi tên một bảng
+        - Thêm ràng buộc `NOT NULL`
             ```sql
-            ALTER TABLE ten_bang_cu RENAME TO ten_bang_moi;
+            ALTER TABLE ten_bang 
+            ALTER COLUMN ten_cot SET NOT NULL;
             ```
-    - Xóa một bảng
+        - Thêm khóa chính (`Primary Key`)
+            ```sql
+            ALTER TABLE ten_bang ADD PRIMARY KEY (ten_cot);
+
+            ALTER TABLE ten_bang
+            ADD CONSTRAINT ten_rang_buoc PRIMARY KEY (ten_cot);
+            ```
+        - Thêm khóa phụ (`Foreign Key`)
+            ```sql
+            ALTER TABLE ten_bang
+            ADD FOREIGN KEY (ten_cot) 
+            REFERENCES bang_tham_chieu (cot_tham_chieu) [ON DELETE action] [ON UPDATE action];
+
+            ALTER TABLE ten_bang
+            ADD CONSTRAINT ten_rang_buoc FOREIGN KEY (ten_cot) 
+            REFERENCES bang_tham_chieu (cot_tham_chieu) [ON DELETE action] [ON UPDATE action];
+            ```
+
+        - Khi thêm một ràng buộc trên một số cột thì các dữ liệu đã được lưu trong các cột đó phải thỏa mãn ràng buộc nếu không thì PostgreSQL sẽ báo lỗi. Ví dụ nếu ta thêm ràng buộc `NOT NULL` vào một cột thì tất cả dữ liệu đã được lưu trong cột đó không được có giá trị `null`.
+    - Xóa ràng buộc
+        - Để xóa một ràng buộc thì ta cần phải biết tên của chúng. Dùng câu lệnh `\d ten_bang` để xem thông tin chi tiết về bảng (bao gồm tên các ràng buộc có trong bảng đó).
+            ```sql
+            ALTER TABLE ten_bang DROP CONSTRAINT ten_rang_buoc;
+            ```
+        - Vì ràng buộc `NOT NULL` không thể đặt tên nên để xóa ràng buộc này, ta cần dùng
+            ```sql
+            ALTER TABLE ten_bang ALTER COLUMN ten_cot DROP NOT NULL;
+            ```
+    - Thay đổi giá trị mặc định của một cột
         ```sql
-        DROP TABLE ten_bang
+        -- Thay đổi giá trị mặc đinh
+        ALTER TABLE ten_bang ALTER COLUMN ten_cot SET DEFAULT gia_tri;
+
+        -- Xóa giá trị mặc định (đặt lại về null)
+        ALTER TABLE ten_bang ALTER COLUMN ten_cot DROP DEFAULT;
         ```
+    - Thay đổi kiểu dữ liệu của một cột
+        ```sql
+        ALTER TABLE ten_bang ALTER COLUMN ten_cot TYPE kieu_du_lieu_moi;
+        ```
+        Câu lệnh này chỉ thực hiện thành công chỉ khi tất cả dữ liệu cũ có thể convert thành công sang kiểu dữ liệu mới. Ta có thể thêm `USING` vào để thêm biểu thức tính toán dữ liệu mới dựa trên dữ liệu cũ.
+    - Đổi tên một cột
+        ```sql
+        ALTER TABLE ten_bang
+        RENAME COLUMN ten_cot_cu TO ten_cot_moi;
+        ```
+    - Đổi tên một bảng
+        ```sql
+        ALTER TABLE ten_bang_cu RENAME TO ten_bang_moi;
+        ```
+- Xóa một bảng
+    ```sql
+    DROP TABLE ten_bang
+    ```
 
 ### Data Manipulation Language (DML)
 **1. Insert**
@@ -607,9 +607,9 @@
 - PostgreSQL sẽ sử dụng điều kiện tìm kiếm này để lọc dữ liệu từ `FROM`.
 
 **5. GROUP BY và HAVING**
-- 
+- Lorem ipsum
 
-**Thứ tự thực thi tổng quát của một truy vấn**
+**6. Thứ tự thực thi tổng quát của một truy vấn**
 - `FROM`: Đầu tiên, PostgreSQL sẽ xác định tất cả các bảng cần đọc dữ liệu trong mệnh đề `FROM` và tiến hành thực hiện các phép `JOIN` nếu có.
 - `WHERE`: Sau khi đã có dữ liệu từ `FROM/JOIN`, PostgreSQL sẽ sử dụng các điều kiện có trong `WHERE` để tiến hành lọc dữ liệu, các hàng không thỏa mãn sẽ bị loại.
 - `GROUP BY`: Các dữ liệu được lọc ra từ `WHERE` sẽ được nhóm lại theo giá trị của các cột được chỉ định trong `GROUP BY`. Sau đó, các hàm tổng hợp (`aggregate function`) như `SUM`, `AVG`, `COUNT`,... sẽ được thực thi nếu có.
