@@ -25,6 +25,9 @@
   - [6. Aggregate Function](#6-aggregate-function)
   - [7. ORDER BY](#7-order-by)
   - [8. Thứ tự thực thi tổng quát của một truy vấn](#8-thứ-tự-thực-thi-tổng-quát-của-một-truy-vấn)
+  - [9. Subquery](#9-subquery)
+- [Index](#index)
+    - [1. Overview](#1-overview-2)
 
 ## Overview
 
@@ -133,13 +136,13 @@
 #### 2. Default value
 
 - Một cột (column) trong PostgreSQL có thể được gán một giá trị mặc định (default value). Khi một record được tạo và không có giá trị nào được chỉ định cho cột đó, cột đó sẽ được gán cho giá trị mặc định tương ứng. Nếu không có giá trị mặc định nào được khai báo, giá trị mặc định của cột đó sẽ là `null`.
-        ```sql
-        CREATE TABLE products (
-            product_no integer,
-            name text,
-            price numeric DEFAULT 9.99
-        );
-        ```
+    ```sql
+    CREATE TABLE products (
+        product_no integer,
+        name text,
+        price numeric DEFAULT 9.99
+    );
+    ```
 - Giá trị mặc định có thể là một biểu thức (expression), biểu thức này sẽ được thực thi bất cứ khi nào giá trị mặc định được tạo. Ví dụ, ta có thể đặt giá trị mặc định của một cột có kiểu `timestamp` là `CURRENT_TIMESTAMP` và mỗi khi một `record` mới được tạo, cột này sẽ có giá trị mặc định bằng với thời gian mà `record` được tạo ra.
 
 #### 3. Generated column
@@ -626,7 +629,19 @@
            3 | c    |   3 | yyy
              |      |   5 | zzz
         ```
+- Các cách thực thi `JOIN` trong PostgreSQL
+    - Có 3 cách thực thi `JOIN` trong PostgreSQL là `Nested Loop Join`, `Hash Join` và `Merge Join`. PostgreSQL sẽ tự động lựa chọn phương pháp tối ưu nhất cho từng truy vấn cụ thể.
+    - `Nested Loop Join`: 
+        - Với mỗi `record` trong bảng thứ nhất, PostgreSQL sẽ kiểm tra so sánh điều kiện `JOIN` với từng `record` trong bảng thứ hai và trả về các `record` phù hợp, nếu bảng thứ nhất có `N record` và bảng thứ hai có `M record` thì độ phức tạp sẽ là `O(N * M)`.
+        - Tốc độ có thể được cải thiện nếu có `index` trên các thuộc tính trong điều kiện `JOIN`.
+    - `Hash Join`:
+        - Đầu tiên, PostgreSQL sẽ xây một `hash table` cho bảng có số lượng `record` nhỏ hơn, sử dụng các thuộc tính trong điều kiên `JOIN` làm `hash keys`. 
+        - Sau đó, với mỗi `record` trong bảng còn lại, gíá trị băm (`hash value`) của các thuộc tính `JOIN` sẽ được tính toán và so sánh giá trị lưu trong `hash table`, các `record` có cùng giá trị băm ở hai bảng sẽ được so sánh về kết hợp với nhau để tạo ra kết quả `JOIN`.
+    - `Merge Join`:
+        - Đầu tiên, cả hai bảng sẽ được sắp xếp dựa trên các thuộc tính trong điều kiện `JOIN`, sau đó, hai bảng sẽ được quét song song để tìm và kết hợp các `record` phù hợp. Mỗi `record` sẽ được scan đúng 1 lần.
+        - Bước sắp xếp có thể được tối ưu nếu có `index` trên các thuộc tính trong điều kiện `JOIN`.
 
+    
 ### 4. WHERE
 - Syntax
     ```sql
@@ -759,4 +774,137 @@
         ```
     - `Multiple Row Subquery`
         - Là các truy vấn con trả về nhiều hàng.
-        - Nếu các hàng này chỉ có một cột, nó có thể sử dụng chung với các toán tử như `IN, ANY, ALL, SOME`.
+        - Thường được sử dụng với các toán tử như `IN, ANY, ALL, SOME` và có thể được sử dụng trong mệnh đê `FROM`, khi đó kết quả của truy vấn con được xem như một bảng tạm thời.
+            ```sql
+            -- Tính số lượng nhân viên và mức lương trung bình cho mỗi phòng ban
+            SELECT d.department_name,
+                emp_stats.employee_count,
+                emp_stats.avg_salary
+            FROM department d
+            JOIN (
+                SELECT department_id,
+                    COUNT(*) AS employee_count,
+                    AVG(salary) AS avg_salary
+                FROM employee
+                GROUP BY department_id
+            ) AS emp_stats ON d.department_id = emp_stats.department_id;
+            ```
+    - `Correlated Subquery`
+        - Là các truy vấn con tham chiếu đến bảng trong truy vấn chính. Truy vấn con được thực thi một lần cho mỗi hàng được xử lý bởi truy vấn chính.
+            ```sql
+            -- Tìm phòng ban không có nhân viên nào
+            SELECT d.department_id, d.department_name
+            FROM department d
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM employee e
+                WHERE e.department_id = d.department_id
+            );
+            ```
+        - Chậm hơn các `non-correlated subquery` (các truy vấn con không tham chiếu đến bảng trong truy vấn chính) vì các truy vấn này thường sẽ được thực thi đúng 1 lần.
+- Các toán tử sử dụng với `subquery`
+    - `EXIST`: 
+        - Sử dụng để kiểm tra xem `subquery` có trả về bất kỳ dữ liệu nào không. Nếu có ít nhất 1 hàng được trả về từ `subquery`, `EXIST` sẽ trả về `true`, nếu không nó sẽ trả về `false`.
+        - Vì kết quả của `EXIST` chỉ phụ thuộc vào việc có dữ liệu được trả về hay không mà không phụ thuộc vào giá trị của dữ liệu nên theo `convention` ta nên dùng `EXISTS(SELECT 1 WHERE ...)`.
+
+            ```sql
+            SELECT col1
+            FROM tab1
+            WHERE EXISTS (SELECT 1 FROM tab2 WHERE col2 = tab1.col2);
+            ```
+
+    - `IN/NOT IN`:
+        - `IN`: Kiểm tra xem một giá trị có thuộc tập hợp kết quả của subquery không.
+        - `NOT IN`: Kiểm tra xem một giá trị có không thuộc tập hợp kết quả của subquery không.
+        ```sql
+        SELECT * FROM employees 
+        WHERE department_id IN (SELECT id FROM departments WHERE location = 'New York');
+        ```
+    - `ANY/SOME`:
+        - So sánh một giá trị với từng giá trị trả về từ `subquery`, toán tử này trả về `true` nếu có bất kỳ giá trị nào thỏa mãn điều kiện so sánh, trả về `false` nếu không có giá trị nào thỏa mãn.
+            ```sql
+            -- Tìm nhân viên có lương cao hơn ít nhất MỘT nhân viên ở phòng 'Sales'
+            SELECT * FROM employee
+            WHERE salary > ANY (SELECT salary FROM employee WHERE department = 'Sales');
+            ```
+    - `ALL`:
+        - So sánh một giá trị với từng giá trị trả về từ `subquery`, toán tử này trả về `true` nếu tất cả giá trị nào thỏa mãn điều kiện so sánh, trả về `false` nếu tồn tại giá trị không thỏa mãn.
+            ```sql
+            -- Tìm nhân viên có lương cao hơn lương của TẤT CẢ nhân viên ở phòng 'Sales'
+            SELECT * FROM employee
+            WHERE salary > ALL (SELECT salary FROM employee WHERE department = 'Sales');
+            ```
+
+## Index
+### 1. Overview
+- `Index` là một cấu trúc dữ liệu đặc biệt được tạo ra để cải thiện hiệu suất truy vấn dữ liệu.
+- Khi PostgreSQL thực hiện tìm kiếm dữ liệu, nó sẽ scan toàn bộ bảng, đọc dữ liệu của từng row trong bộ nhớ từ đầu đến cuối, so sánh với các điều kiện (nếu có) và trả về kết quả. Vì vậy, thời gian tìm kiếm sẽ phụ thuộc vào số lượng `record` trong bảng (O(n)). Cách đọc dữ liệu này còn được gọi là `full scan` hay hoặc `sequential scan`.
+- Việc scan toàn bộ bảng để tìm kiếm chỉ phù hợp với những bảng có số lượng `record` nhỏ. Với những bảng chứa một lượng lớn dữ liệu với hàng trăm nghìn cho đến hàng triệu `record` trở lên, việc tìm kiếm sẽ mất rất nhiều thời gian.
+- Để giải quyết vấn đề này, ta có thể xây dựng `index` dựa trên một hoặc một nhóm các thuộc tính (`column`). `Index` sẽ chứa giá trị của các thuộc tính này và thông tin về vị trí chính xác của các `record` có giá trị tương ứng trong bộ nhớ.
+- Về cơ bản, việc sử dụng `index` là scan đọc dữ liệu trên `index` trước sau đó mới scan và đọc dữ liệu trên bảng gốc. Khi ta thực hiện truy vấn tìm kiếm trên một vài thuộc tính đã được đánh `index`, Postgres sẽ thực hiện `scan index` để tìm vị trí các `record` sau đó thực hiện việc đọc dữ liệu trực tiếp từ bộ nhớ. Việc này nhanh hơn rất nhiều so với `full scan` vì `index` sử dụng các cấu trúc dữ liệu phức tạp để tối ưu việc tìm kiếm dựa trên các thuộc tính được đánh `index` như `B-tree` (cây cân bằng), `Hash`, ...
+- Một khi `index` đã được tạo, PostgreSQL sẽ tự động cập nhật `index` khi dữ liệu trong bảng bị thay đổi và nó sẽ sử dụng `index` này trong khi thực thi truy vấn nếu nó nghĩ việc sử dụng sẽ tối ưu hơn là dùng `sequential scan`.
+- `Index` sẽ chỉ có tác dụng trên các truy vấn sử dụng điều kiện chứa thuộc tính đã được đánh `index`.
+- Để tạo một `index` trong PostgreSQL, ta sử dụng câu lệnh
+    ```sql
+    CREATE INDEX index_name ON table_name (col_name);
+    ```
+- Để minh họa về hiệu quả của `index`, ta sẽ sử dụng bảng `engineer` với 100000 `records` (dữ liệu trong file `data.sql`)
+    ```sql
+    CREATE TABLE IF NOT EXISTS engineer
+    (
+        id bigserial NOT NULL,
+        first_name character varying(255),
+        last_name character varying(255),
+        gender smallint NOT NULL,
+        country_id bigint,
+        title character varying(255),
+        created timestamp without time zone,
+        PRIMARY KEY (id)
+    );
+    ```
+
+- Đầu tiên, ta phân tích câu lệnh truy vấn dữ liệu trước khi thêm `index`
+    ```sql
+    EXPLAIN ANALYZE SELECT * FROM engineer WHERE country_id >= 150;
+
+    QUERY PLAN                                                   
+    ------------------------------------------------------------
+    Seq Scan on engineer  (cost=0.00..2367.00 rows=37876 width=52) (actual time=0.016..15.220 rows=37759 loops=1)
+        Filter: (country_id >= 150)
+        Rows Removed by Filter: 62241
+    Planning Time: 0.320 ms
+    Execution Time: 17.122 ms
+    ```
+    Ta có thể thấy, vì chưa tạo `index`, PostgreSQL sẽ sử dụng `sequential scan` để scan toàn bộ bảng để tìm kiếm dữ liệu.
+- Tiếp theo, ta tạo `index` trên thuộc tính `country_id` và chạy lại câu truy vấn
+    ```sql
+    CREATE INDEX idx_engineer_country_id ON engineer(country_id);
+
+    EXPLAIN ANALYZE SELECT * FROM engineer WHERE country_id >= 150;
+
+    QUERY PLAN                                                                
+    ------------------------------------------------------------
+    Bitmap Heap Scan on engineer  (cost=425.83..2016.28 rows=37876 width=52) (actual time=2.115..8.779 rows=37759 loops=1)
+        Recheck Cond: (country_id >= 150)
+        Heap Blocks: exact=1117
+        ->  Bitmap Index Scan on idx_engineer_country_id  (cost=0.00..416.36 rows=37876 width=0) (actual time=1.917..1.917 rows=37759 loops=1)
+            Index Cond: (country_id >= 150)
+    Planning Time: 0.188 ms
+    Execution Time: 10.889 ms
+    ```
+    Ta có thể thấy, sau khi áp dụng `index`, PostgreSQL đã sử dụng `index scan` thay vì `sequential scan` và thời gian thực thi truy vấn giảm hơn 40% từ `17ms` xuống còn `10ms`.
+
+- Ta xét một câu truy vấn khác với `country_id >= 100`
+    ```sql
+    EXPLAIN ANALYZE SELECT * FROM engineer WHERE country_id >= 100;
+
+    ------------------------------------------------------------
+    Seq Scan on engineer  (cost=0.00..2367.00 rows=58538 width=52) (actual time=0.023..9.260 rows=58497 loops=1)
+        Filter: (country_id >= 100)
+        Rows Removed by Filter: 41503
+    Planning Time: 0.129 ms
+    Execution Time: 11.330 ms
+    ```
+- Trong ví dụ này, mặc dù đã có `index` trên thuộc tính `country_id` nhưng PostgreSQL vẫn quyết định dùng `seq scan` vì với điều kiện này, sẽ có rất nhiều `record` phù hợp. Vậy nên, PostgreSQL xác định rằng `seq scan` trên bảng chính còn nhanh hơn việc `scan index` rồi sau đó mới đọc dữ liệu từ bảng chính.
+- Như vậy, với mỗi điều kiện tìm kiếm khác nhau, PostgreSQL sẽ biết cách thực hiện các `query` nhanh nhất có thể dựa trên những gì chúng ta cung cấp cho nó, cụ thể ở đây là `index`.
+- Các dữ liệu trong `index` phải đồng bộ so với bảng chính, vậy nên việc thay đổi dữ liệu (thêm, sửa, xóa) sẽ bị chậm đi do phải cập nhật cả `index` và việc `index` không phải lúc nào cũng tăng tốc độ tìm kiếm dữ liệu nên t không nên sử dụng `index` một cách tùy tiện, có thể không làm tăng tốc độ đọc mà còn làm giảm tốc độ viết và ghi dữ liệu. 
