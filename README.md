@@ -28,6 +28,18 @@
   - [9. Subquery](#9-subquery)
 - [Index](#index)
     - [1. Overview](#1-overview-2)
+    - [2. Các loại index trong PostgreSQL](#2-các-loại-index-trong-postgresql)
+- [Partitioning](#partitioning)
+    - [1. Overview](#1-overview-3)
+    - [2. Horizontal partitioning](#2-horizontal-partitioning)
+    - [3. Vertical partitioning](#3-vertical-partitioning)
+- [Transaction](#transaction)
+    - [1. Overview](#1-overview-4)
+    - [2. Atomicity (Tính nguyên tử)](#2-atomicity-tính-nguyên-tử)
+    - [3. Consistency (Tính nhất quán)](#3-consistency-tính-nhất-quán)
+    - [4. Isolation (Tính cô lập)](#4-isolation-tính-cô-lập)
+    - [5. Durability (Tính bền vững)](#5-durability-tính-bền-vững)
+
 
 ## Overview
 
@@ -908,3 +920,165 @@
 - Trong ví dụ này, mặc dù đã có `index` trên thuộc tính `country_id` nhưng PostgreSQL vẫn quyết định dùng `seq scan` vì với điều kiện này, sẽ có rất nhiều `record` phù hợp. Vậy nên, PostgreSQL xác định rằng `seq scan` trên bảng chính còn nhanh hơn việc `scan index` rồi sau đó mới đọc dữ liệu từ bảng chính.
 - Như vậy, với mỗi điều kiện tìm kiếm khác nhau, PostgreSQL sẽ biết cách thực hiện các `query` nhanh nhất có thể dựa trên những gì chúng ta cung cấp cho nó, cụ thể ở đây là `index`.
 - Các dữ liệu trong `index` phải đồng bộ so với bảng chính, vậy nên việc thay đổi dữ liệu (thêm, sửa, xóa) sẽ bị chậm đi do phải cập nhật cả `index` và việc `index` không phải lúc nào cũng tăng tốc độ tìm kiếm dữ liệu nên ta không nên sử dụng `index` một cách tùy tiện, có thể không làm tăng tốc độ đọc mà còn làm giảm tốc độ viết và ghi dữ liệu. 
+
+### 2. Các loại index trong PostgreSQL
+
+- PostgreSQL hỗ trợ nhiều loại `index` như `B-Tree`, `Hash`, `Gist`, ... Mỗi loại `index` sử dụng các cấu trúc dữ liệu và thuật toán khác nhau phù hợp cho các kiểu tìm kiếm và kiểu dữ liệu khác nhau.
+- Mặc định, nếu không chỉ định loại `index` khi tạo thì PostgreSQL sẽ luôn sử dụng `B-tree index`, loại `index` sẽ phù hợp với hầu hết các trường hợp phổ biến.
+
+- `B-tree` (cây cân bằng)
+    - Là loại `index` hỗ trợ tối ưu tìm kiếm với các toán tử `<   <=   =   >=   >`.
+    - Hiệu quả trong việc tìm kiếm khoảng giá trị (range queries).
+    ```sql
+    CREATE INDEX index_name ON table_name (col_name);
+    ```
+
+- `Hash`
+    - Sử dụng `hash function` trên các thuộc tính `index` để tạo `index table`.
+    - Chỉ áp dụng trong các câu truy vấn sử dụng so sánh `=`.
+    - Không thể xây dựng `composite index` (`index` xây dựng dựa trên nhiều thuộc tính) sử dụng `Hash`.
+    ```sql
+    CREATE INDEX index_name ON table_name USING HASH (col_name);
+    ```
+
+- Ngoài hai kiểu `index` phổ biến trên, PostgreSQL còn hỗ trợ các loại `index` khác như `GiST`, `SP-GiST`, `GIN` và `BRIN`. Đọc thêm về các loại `index` này ở [đây](https://www.postgresql.org/docs/current/indexes-types.html).
+
+## Partitioning
+
+### 1. Overview
+- `Partitioning` (phân vùng dữ liệu) là việc chia một bảng lớn (`partitioned table`) thành nhiều bảng nhỏ hơn gọi là các `partition`. Mỗi `partition` là một bảng riêng biệt nhưng khi truy vấn, người dùng vẫn tương tác với bảng chính như một khối dữ liệu thống nhất. PostgreSQL sẽ tự động chuyển các truy vấn đến đúng phân vùng chứa dữ liệu cần xử lý. 
+- `Partitioning` thường được sử dụng để phân chia một bảng chứa các khối dữ liệu cực kì lớn vượt quá bộ nhớ lưu trữ của `server`.
+- `Partitioning` có thể làm tăng hiệu suất truy vấn sử dụng các thuộc tính trong `partition key` làm điều kiện tìm kiếm bằng cách giảm không gian tìm kiếm và có thể tối ưu lưu trữ bằng cách lưu các dữ liệu của phân vùng ít được truy cập ở các thiết bị lưu trữ chậm hơn nhưng rẻ hơn.
+- Trong PostgreSQL, ta không thể biến một bảng bình thường đã được khai báo thành bảng có thể phân vùng `partitioned table`.
+
+### 2. Horizontal partitioning
+- Là kĩ thuật chia một bảng lớn thành các bảng nhỏ hơn theo chiều ngang, mỗi bảng con sẽ kế thừa toàn bộ cấu trúc của bảng cha, từ `column` cho đến kiểu dữ liệu. Các dữ liệu sẽ được phân chia vào mỗi bảng theo điều kiện phân vùng `partition keys`.
+    ![](./image2.png)
+- PostgreSQL hỗ trợ chúng ta 3 kiểu `horizontal partitioning` là `partition by range`, `partition by list` và `partition by hash`.
+- `Partition by range`
+    - Phân chia dữ liệu dựa trên một khoảng giá trị liên tục. Ví dụ như phân chia dữ liệu theo khoảng khoảng thời gian, phân chia theo bảng chữ cái A, B, C; D, E, F;... hoặc theo khoảng số liệu (`ID` từ 1-1000, 1001-2000,...).
+    - Ví dụ về phân chia bảng `measurement` dựa trên thời gian tạo `record` sử dụng thuộc tính `logdate` làm thuộc tính phân vùng `partiton key`, mỗi `partiton` sẽ chứa dữ liệu trong vòng một tháng.
+        ```sql
+        CREATE TABLE measurement (
+            city_id         int not null,
+            logdate         date not null,
+            peaktemp        int,
+            unitsales       int
+        ) PARTITION BY RANGE (logdate);
+
+        CREATE TABLE measurement_y2006m02 PARTITION OF measurement
+            FOR VALUES FROM ('2006-02-01') TO ('2006-03-01');
+
+        CREATE TABLE measurement_y2006m03 PARTITION OF measurement
+            FOR VALUES FROM ('2006-03-01') TO ('2006-04-01');
+
+        ...
+        CREATE TABLE measurement_y2007m11 PARTITION OF measurement
+            FOR VALUES FROM ('2007-11-01') TO ('2007-12-01');
+        ```
+    - Khi ta cố `INSERT` một `record` không thuộc một `partition` nào thì PostgreSQL sẽ báo lỗi vì không biết nên để `record` này vào đâu. Do đó, nếu không chắc chắn về tập data của mình, ta cần tạo một `table default partition` để chứa các `record` không biết phân loại vào đâu.
+        ```sql
+        CREATE TABLE measurement_default PARTITION OF measurement DEFAULT;
+        ```
+- `Partition by list`
+    - Với `list partitioning` thì việc phân chia dữ liệu sẽ dựa trên một danh sách các giá trị.
+    - Ví dụ với bảng `engineer` thì có thể nhóm các `engineer` có title `Backend Engineer`, `Frontend Engineer`, `Fullstack Engineer` nhóm vào thành một `partition`; `BA` và `QA` một `partition`; còn lại là `default partition`. 
+        ```sql
+        CREATE TABLE ENGINEER
+        (
+            id bigserial NOT NULL,
+            first_name character varying(255) NOT NULL,
+            last_name character varying(255) NOT NULL,
+            gender smallint NOT NULL,
+            country_id bigint NOT NULL,
+            title character varying(255) NOT NULL,
+            started_date date,
+            created timestamp without time zone NOT NULL
+        ) PARTITION BY LIST(title);
+
+        CREATE TABLE ENGINEER_ENGINEER PARTITION OF ENGINEER FOR VALUES
+            IN ('Backend Engineer', 'Frontend Engineer', 'Fullstack Engineer');
+
+        CREATE TABLE ENGINEER_BA_QA PARTITION OF ENGINEER FOR VALUES
+            IN ('BA', 'QA');
+            
+        CREATE TABLE ENGINEER_DEFAULT PARTITION OF ENGINEER DEFAULT;
+        ```
+    - `List partition` phân chia `table` dựa trên danh sách các giá trị cho trước, không theo khoảng giá trị như `range partition`. Do đó, nó phù hợp phân chia dữ liệu theo những giá trị cụ thể.
+- `Partition by hash`
+    - `Hash partitioning` sẽ thực hiện `hash` các giá trị trong `partition keys` để tạo ra `hash value`, sau đó, các giá trị này sẽ được chia dư (`modulus`) để tìm `record` cho `partition`. 
+    - Ví dụ `record` có `partition key hash value = 5`, tổng số lượng `partition` là 3 (0, 1, 2), lấy 5 % 3 = 2. Vậy `record` đó nằm ở `partition` thứ ba.
+        ```sql
+        CREATE TABLE ENGINEER
+        (
+            id bigserial NOT NULL,
+            first_name character varying(255) NOT NULL,
+            last_name character varying(255) NOT NULL,
+            gender smallint NOT NULL,
+            country_id bigint NOT NULL,
+            title character varying(255) NOT NULL,
+            started_date date,
+            created timestamp without time zone NOT NULL
+        ) PARTITION BY HASH(country_id);
+
+        CREATE TABLE ENGINEER_P1 PARTITION OF ENGINEER
+            FOR VALUES WITH (MODULUS 3, REMAINDER 0);
+
+        CREATE TABLE ENGINEER_P2 PARTITION OF ENGINEER
+            FOR VALUES WITH (MODULUS 3, REMAINDER 1);
+            
+        CREATE TABLE ENGINEER_P3 PARTITION OF ENGINEER
+            FOR VALUES WITH (MODULUS 3, REMAINDER 2);
+        ```
+    - Với `hash partition`, ta không thể dễ dàng đoán được một `record` nằm ở `partition` nào. Vậy nên, `hash partition` phù hợp với các dữ liệu không nhất thiết phải thuộc cùng một nhóm để lưu vào một `partition`.
+    - Mục đích của `hash partition` là cố gắng phân chia dữ liệu một các cân bằng giữa các `partition` với nhau.
+
+### 3. Vertical partitioning
+- `Vertical partitioning` sẽ chia một bảng thành các `partition` theo chiều dọc. Ta sẽ nhóm các cột có tần suất truy vấn cùng nhau vào một `partition`. Việc này sẽ làm giảm kích thước của `record` khi cần đọc và tăng hiệu suất truy vấn.
+    ![](./image3.png)
+
+- Ta thường sẽ sử dụng chung một `primary key` cho toàn bộ các `partition`.
+
+## Transaction
+
+### 1. Overview
+- `Transaction` sẽ xử lý một chuỗi các câu lệnh SQL và thực thi nó như một đơn vị thực thi duy nhất. Các câu lệnh trong một `transaction` đều phải được thực thi thành công, nếu có một câu lệnh thực thi không thành công, tất cả các thay đổi trước đó trên dữ liệu trong `transaction` đều sẽ được `rollback` và sẽ không có bất kỳ sự thay đổi nào xảy ra.
+- Một `transaction` sẽ bắt đầu với câu lệnh `BEGIN`, nếu tất cả các câu lệnh đều được thực hiện thành công, ta sử dụng `COMMIT` để kết thúc `transaction` và lưu các thay đổi vào database. Ta cũng có thể sử dụng `ROLLBACK` để kết thúc và sẽ không có sự thay đổi nào được lưu vào database.
+- `Transaction` phải đảm bảo 4 tính chất `ACID` là `Atomicity`, `Consistency`, `Ísolation` và `Durability`.
+
+### 2. Atomicity (Tính nguyên tử)
+- `Atomicity` là tính chất yêu cầu tất cả các bước trong một `transaction` đều phải được thực hiện thành công hoặc không có thay đổi nào xảy ra.
+- Nếu có một `transaction` bị lỗi thì `transaction` đó sẽ được `ROLLBACK`, dữ liệu sẽ không thay đổi, còn nếu không xảy ra lỗi thì `transaction` sẽ được `COMMIT`, dữ liệu trong cơ sở dữ liệu sẽ được cập nhật thành công.
+
+### 3. Consistency (Tính nhất quán)
+- `Consistency` yêu cầu `transaction` chỉ có thể thay đổi dữ liệu theo những cách được cho phép.
+- Dữ liệu trong database luôn phải được đặt trong trạng thái hợp lệ ở bất kỳ thời điểm nào trước và sau khi thực hiện mỗi hành động trong `transaction`.
+- Sau khi thực hiện một `transaction`, tất cả các quy định và ràng buộc của cơ sở dữ liệu phải được duy trì. Nếu một `transaction` vi phạm bất kỳ ràng buộc nào, nó phải bị huỷ bỏ và hệ thống phải quay trở lại trạng thái trước khi `transaction` diễn ra.
+
+### 4. Isolation (Tính cô lập)
+- `Isolation` nói về tính độc lập của các `transaction` thực thi đồng thời. Tính chất này sẽ đảm bảo các `transaction` có thể hoạt động song song mà không gây ảnh hưởng đến nhau.
+- `Read phenomena` là các hiện tượng đọc có thể xảy ra khi các `transaction` hoạt động đồng thời.
+    - `Dirty read`: Một `transaction` đọc được những thay đổi dữ liệu chưa được `commit` từ các `transaction` khác. Điều này rất nguy hiểm vì ta không biết rằng các dữ liệu này sẽ được `commit` hay `rollback`.
+    - `Nonrepeatable read`: Là hiện tượng khi `transaction` đọc một dữ liệu nhiều lần nhưng nhận được các kết quả khác nhau do một `transaction` khác đã sửa đổi và `commit` dữ liệu đó trong khoảng thời gian giữa các lần đọc.
+    - `Phantom read`: Gần giống như `nonrepeatable read` nhưng xảy ra với các truy vấn trả về một tập các dữ liệu. Hiện tượng này xảy ra khi `transaction` thực hiện lại một truy vấn trả về một tập các dữ liệu thỏa mãn điều kiện nào đó và phát hiện ra lần này trả về các hàng khác (nhiều hơn hoặc ít hơn) so với lần đầu tiên. Điều này xảy ra do một `transaction` khác đã thêm hoặc xóa dữ liệu phù hợp với điều kiện truy vấn và `commit` trong khoảng thời gian giữa 2 lần truy vấn.
+    - `Serialization anomaly`: Là hiện tượng xảy ra khi kết quả của một nhóm các giao dịch chạy đồng thời sẽ khác với kết quả khi các giao dịch này chạy tuần tự.
+
+- PostgreSQL cung cấp các `isolation level` khác nhau để đảm bảo tính cô lập giữa các `transaction`.
+    ```sql
+    SET TRANSACTION ISOLATION LEVEL isolation_level;
+    ```
+    - `Read Uncommitted`:
+        - `Transaction` có thể đọc những thay đổi chưa được `commit` hoặc đã được `commit` bởi những `transaction` khác.
+        - PostgreSQL không hỗ trợ cấp độ cô lập này, nếu chúng ta đặt `transaction isolation level` là `Read Uncommitted` thì nó sẽ hoạt động như `Read Committed`.
+    - `Read Committed`:
+        - Các truy vấn bên trong `transaction` chỉ đọc những thay đổi đã được `commit` bởi các `transaction` khác.
+        - Đây là `isolation level` mặc định đối với `transaction` trong PostgreSQL.
+    - `Repeatable Read`:
+        - Mức độ cô lập này đảm bảo khi `transaction` thực hiện một truy vấn thì kết quả của truy vấn này sẽ thống nhất và nhất quán dù được thực hiện lại nhiều lần.
+    - `Serializable`:
+        - Về cơ bản `serializable` hoạt động giống như `repeatable read` nhưng nó sẽ giám sát việc thực thi các `transaction` đồng thời để xem kết quả tạo ra bởi các `transaction` này có giống như khi chạy tuần tự hay không. Nếu không đảm bảo điều kiện tuần tự thì khi các `transaction` commit, PostgreSQL sẽ cho phép 1 `transaction` chạy thành công và báo lỗi đến các `transaction` còn lại.
+
+    ![](./image4.png)
+
+### 5. Durability (Tính bền vững)
+- Tính chất này đảm bảo rằng những `transaction` đã `commit`, kết quả của nó sẽ được lưu trữ vĩnh viễn và không bị mất đi, ngay cả trong trường hợp có lỗi hệ thống, mất điện điện hoặc các sự cố khác.
