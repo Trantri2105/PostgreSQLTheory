@@ -42,7 +42,7 @@
 
 
 ## Overview
-
+- PostgreSQL là một hệ thống quản trị cơ sở dữ liệu quan hệ miễn phí với nguồn mở tiên tiến nhất hiện nay, có khả năng mở rộng cao và tuân thủ các tiêu chuẩn kỹ thuật.
 ## Các thành phần chính trong PostgreSQL
 
 - PostgreSQL tổ chức dữ liệu theo một cấu trúc phân cấp rõ ràng, bao gồm cluster, database, schema, table,...
